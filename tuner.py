@@ -10,7 +10,7 @@ gpa.colony_size = 50
 SAVE_DIR = str()
 
 
-def vary_attribute(attr_name, low_bound=0, upper_bound=1, num=30, avg=1, remove_anom=0):
+def vary_attribute(attr_name, low_bound=0, upper_bound=1, num=20, avg=1, remove_anom=0):
     vary_x = np.round(np.linspace(low_bound, upper_bound, num), 3)
     results = np.zeros(num)
     for times in range(avg):
@@ -21,6 +21,7 @@ def vary_attribute(attr_name, low_bound=0, upper_bound=1, num=30, avg=1, remove_
             setattr(gpa, attr_name, x)
             curr.append(gpa.run(print_every=None, graph=True, break_threshold=30)[0].time)
         results += np.array(curr)
+        print(results)
     results /= avg
     results = np.round(results, 4)
     # Remove anomalies
@@ -42,10 +43,11 @@ def vary_attribute(attr_name, low_bound=0, upper_bound=1, num=30, avg=1, remove_
     plt.close()
 
 
-def vary_time(attr_name, low_bound=0, upper_bound=1, num=30, avg=3, converge_epoch=50):
+def vary_time(attr_name, low_bound=0.05, upper_bound=0.95, num=20, avg=10, converge_epoch=30):
     vary_x = np.round(np.linspace(low_bound, upper_bound, num), 3)
     results = np.zeros(num)
     for times in range(avg):
+        print(times)
         cur = []
         for x in vary_x:
             setattr(gpa, attr_name, x)
@@ -59,7 +61,7 @@ def vary_time(attr_name, low_bound=0, upper_bound=1, num=30, avg=3, converge_epo
     print(results)
     r_coef = np.round(np.corrcoef(vary_x, results)[1][0], 3)
     poly_fit = np.polyfit(vary_x, results, 2)
-    plt.title(f"Varying {attr_name} (r={r_coef})")
+    plt.title(f"Varying {attr_name}")
     plt.xlabel(f"Value of {attr_name}")
     plt.ylabel(f"Convergence time (epochs)")
     plt.scatter(vary_x, results)
@@ -70,9 +72,12 @@ def vary_time(attr_name, low_bound=0, upper_bound=1, num=30, avg=3, converge_epo
 
 
 if __name__ == "__main__":
+    start = time.time()
     SAVE_DIR = os.path.join("runs", str(time.time_ns()))
     os.mkdir(SAVE_DIR)
     # vary_time("elitism_ratio")
     # vary_time("mutation_ratio")
-    vary_time("mut_gene_prop")
+    # vary_time("mut_gene_prop")
     # vary_time("reproduce_ratio")
+    stop = time.time()
+    print(f"Time taken: {round(stop - start, 4)}")
