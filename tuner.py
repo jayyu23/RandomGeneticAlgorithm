@@ -2,6 +2,7 @@ from algorithm import GeneticProcessAllocator
 import numpy as np
 from matplotlib import pyplot as plt
 import time
+import multiprocessing as mp
 import os
 
 gpa = GeneticProcessAllocator(None, 100, True)
@@ -43,11 +44,11 @@ def vary_attribute(attr_name, low_bound=0, upper_bound=1, num=20, avg=1, remove_
     plt.close()
 
 
-def vary_time(attr_name, low_bound=0.05, upper_bound=0.95, num=30, avg=10, converge_epoch=30):
+def vary_time(attr_name, low_bound=0.05, upper_bound=0.95, num=50, avg=10, converge_epoch=30):
     vary_x = np.round(np.linspace(low_bound, upper_bound, num), 3)
     results = np.zeros(num)
     for times in range(avg):
-        print(times)
+        # print(times)
         cur = []
         for x in vary_x:
             setattr(gpa, attr_name, x)
@@ -55,15 +56,15 @@ def vary_time(attr_name, low_bound=0.05, upper_bound=0.95, num=30, avg=10, conve
             # print(run_result.epoch)
             cur.append(run_result.epoch - converge_epoch)
         results += np.array(cur)
-        print(cur)
+        # print(cur)
     results /= avg
     results = np.round(results, 4)
     # results = np.array(results)
     print(results)
     r_coef = np.round(np.corrcoef(vary_x, results)[1][0], 3)
     poly_fit = np.polyfit(vary_x, results, 2)
-    plt.title(f"Varying {attr_name}")
-    plt.xlabel(f"Value of {attr_name}")
+    plt.title(f"Varying {attr_name} (avg of {avg} runs)")
+    plt.xlabel(f"Value of {attr_name} (n={num})")
     plt.ylabel(f"Convergence time (epochs)")
     plt.scatter(vary_x, results)
     plt.plot(vary_x, np.poly1d(poly_fit)(vary_x), color='red')
@@ -76,9 +77,13 @@ if __name__ == "__main__":
     start = time.time()
     SAVE_DIR = os.path.join("runs", str(time.time_ns()))
     os.mkdir(SAVE_DIR)
-    # vary_time("elitism_ratio")
-    # vary_time("mutation_ratio")
-    # vary_time("mut_gene_prop")
-    vary_time("reproduce_ratio")
+    attrs = ["elitism_ratio", "mutation_ratio", "mut_gene_prop", "reproduce_ratio"]
+    processes = []
+    for v in attrs:
+        p = mp.Process(target=vary_time, args=(v,))
+        p.start()
+        processes.append(p)
+    for p in processes:
+        p.join()
     stop = time.time()
     print(f"Time taken: {round(stop - start, 4)}")
