@@ -4,8 +4,9 @@ from matplotlib import pyplot as plt
 import time
 import os
 
-gpa = GeneticProcessAllocator(None, 100)
-gpa.epochs = 100
+gpa = GeneticProcessAllocator(None, 100, True)
+gpa.epochs = 200
+gpa.colony_size = 50
 SAVE_DIR = str()
 
 
@@ -41,18 +42,37 @@ def vary_attribute(attr_name, low_bound=0, upper_bound=1, num=30, avg=1, remove_
     plt.close()
 
 
-def vary_time(attr_name, low_bound=0, upper_bound=1, num=30, converge_epoch=30):
+def vary_time(attr_name, low_bound=0, upper_bound=1, num=30, avg=3, converge_epoch=50):
     vary_x = np.round(np.linspace(low_bound, upper_bound, num), 3)
     results = np.zeros(num)
-    for x in vary_x:
-        setattr(gpa, attr_name, x)
-        curr.append(gpa.run(print_every=None, graph=True, break_threshold=converge_epoch)[0].time)
+    for times in range(avg):
+        cur = []
+        for x in vary_x:
+            setattr(gpa, attr_name, x)
+            run_result = gpa.run(print_every=None, graph=False, break_threshold=converge_epoch)
+            # print(run_result.epoch)
+            cur.append(run_result.epoch)
+        results += np.array(cur)
+    results /= avg
+    results = np.round(results, 4)
+    # results = np.array(results)
+    print(results)
+    r_coef = np.round(np.corrcoef(vary_x, results)[1][0], 3)
+    poly_fit = np.polyfit(vary_x, results, 2)
+    plt.title(f"Varying {attr_name} (r={r_coef})")
+    plt.xlabel(f"Value of {attr_name}")
+    plt.ylabel(f"Convergence time (epochs)")
+    plt.scatter(vary_x, results)
+    plt.plot(vary_x, np.poly1d(poly_fit)(vary_x), color='red')
+    plt.savefig(os.path.join(SAVE_DIR, f"{attr_name}.png"))
+    plt.show()
+    plt.close()
 
 
 if __name__ == "__main__":
     SAVE_DIR = os.path.join("runs", str(time.time_ns()))
     os.mkdir(SAVE_DIR)
-    vary_attribute("elitism_ratio")
-    vary_attribute("mutation_ratio")
-    vary_attribute("mut_gene_prop")
-    vary_attribute("reproduce_ratio")
+    # vary_time("elitism_ratio")
+    # vary_time("mutation_ratio")
+    vary_time("mut_gene_prop")
+    # vary_time("reproduce_ratio")

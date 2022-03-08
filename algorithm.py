@@ -48,7 +48,7 @@ class Colony:
 
 class GeneticProcessAllocator:
 
-    def __init__(self, path=None, n_processes=100):
+    def __init__(self, path=None, n_processes=100, linear=True):
         # Define allocator constants
         self.p_array = []
         self.kernel_num = 2
@@ -67,7 +67,7 @@ class GeneticProcessAllocator:
         if path:
             self.init_from_csv(path)
         else:
-            self.init_from_generator(n_processes)
+            self.init_from_generator(n_processes, linear)
 
     """
     Get process data from an existing CSV
