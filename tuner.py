@@ -10,9 +10,7 @@ gpa.epochs = 200
 gpa.colony_size = 50
 SAVE_DIR = str()
 
-plot_data = dict()  # name -> (metadata, x, y)
-
-def vary_attribute(attr_name, low_bound=0, upper_bound=1, num=20, avg=1, remove_anom=0):
+def vary_attribute(attr_name, plot_data, low_bound=0, upper_bound=1, num=20, avg=1, remove_anom=0):
     vary_x = np.round(np.linspace(low_bound, upper_bound, num), 3)
     results = np.zeros(num)
     for times in range(avg):
@@ -21,7 +19,7 @@ def vary_attribute(attr_name, low_bound=0, upper_bound=1, num=20, avg=1, remove_
         for x in vary_x:
             print(x)
             setattr(gpa, attr_name, x)
-            curr.append(gpa.run(print_every=None, graph=True, break_threshold=30)[0].time)
+            curr.append(gpa.run(print_every=None, graph=False, break_threshold=30)[0].time)
         results += np.array(curr)
         print(results)
     results /= avg
@@ -33,19 +31,11 @@ def vary_attribute(attr_name, low_bound=0, upper_bound=1, num=20, avg=1, remove_
         results = np.delete(results, index)
         vary_x = np.delete(vary_x, index)
 
-    r_coef = np.round(np.corrcoef(vary_x, results)[1][0], 3)
-    poly_fit = np.polyfit(vary_x, results, 2)
-    plt.title(f"Varying {attr_name} (r={r_coef})")
-    plt.xlabel(f"Value of {attr_name}")
-    plt.ylabel(f"Top allocation time ({gpa.epochs} epochs)")
-    plt.scatter(vary_x, results)
-    plt.plot(vary_x, np.poly1d(poly_fit)(vary_x), color='red')
-    plt.savefig(os.path.join(SAVE_DIR, f"{attr_name}.png"))
-    plt.show()
-    plt.close()
+    meta_data = (num, avg, remove_anom)
+    plot_data[attr_name] = (meta_data, vary_x, results)
 
 
-def vary_time(attr_name, low_bound=0.05, upper_bound=0.95, num=100, avg=20, converge_epoch=30):
+def vary_time(attr_name, plot_data, low_bound=0.05, upper_bound=0.95, num=10, avg=1, converge_epoch=30):
     vary_x = np.round(np.linspace(low_bound, upper_bound, num), 3)
     results = np.zeros(num)
     for times in range(avg):
@@ -65,7 +55,7 @@ def vary_time(attr_name, low_bound=0.05, upper_bound=0.95, num=100, avg=20, conv
     plot_data[attr_name] = (meta_data, vary_x, results)
 
 
-def plot_results():
+def plot_results(plot_data, time=True):
     print(plot_data)
     for name, data in plot_data.items():
         meta_data, x, y = data
@@ -74,7 +64,10 @@ def plot_results():
         poly_fit = np.polyfit(x, y, 2)
         plt.title(f"Varying {name} (avg of {avg} runs)")
         plt.xlabel(f"Value of {name} (n={num})")
-        plt.ylabel(f"Convergence time (C={converge_epoch})")
+        if time:
+            plt.ylabel(f"Convergence time (C={converge_epoch})")
+        else:
+            plt.ylabel(f"Top allocation time ({gpa.epochs} epochs)")
         plt.scatter(x, y)
         plt.plot(x, np.poly1d(poly_fit)(x), color='red')
         plt.savefig(os.path.join(SAVE_DIR, f"{name}.png"))
@@ -88,12 +81,16 @@ if __name__ == "__main__":
     os.mkdir(SAVE_DIR)
     attrs = ["elitism_ratio", "mutation_ratio", "mut_gene_prop", "reproduce_ratio"]
     processes = []
+
+    manager = mp.Manager()
+    p_data = manager.dict()  # name -> (metadata, x, y)
+
     for v in attrs:
-        p = mp.Process(target=vary_time, args=(v,))
+        p = mp.Process(target=vary_time, args=(v,p_data))
         p.start()
         processes.append(p)
     for p in processes:
         p.join()
-    plot_results()
+    plot_results(p_data)
     stop = time.time()
     print(f"Time taken: {round(stop - start, 4)}")
