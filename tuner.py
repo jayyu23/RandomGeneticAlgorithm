@@ -10,6 +10,7 @@ gpa.epochs = 200
 gpa.colony_size = 50
 SAVE_DIR = str()
 
+plot_data = dict()  # name -> (metadata, x, y)
 
 def vary_attribute(attr_name, low_bound=0, upper_bound=1, num=20, avg=1, remove_anom=0):
     vary_x = np.round(np.linspace(low_bound, upper_bound, num), 3)
@@ -44,11 +45,11 @@ def vary_attribute(attr_name, low_bound=0, upper_bound=1, num=20, avg=1, remove_
     plt.close()
 
 
-def vary_time(attr_name, low_bound=0.05, upper_bound=0.95, num=50, avg=10, converge_epoch=30):
+def vary_time(attr_name, low_bound=0.05, upper_bound=0.95, num=100, avg=20, converge_epoch=30):
     vary_x = np.round(np.linspace(low_bound, upper_bound, num), 3)
     results = np.zeros(num)
     for times in range(avg):
-        # print(times)
+        print(times)
         cur = []
         for x in vary_x:
             setattr(gpa, attr_name, x)
@@ -60,17 +61,25 @@ def vary_time(attr_name, low_bound=0.05, upper_bound=0.95, num=50, avg=10, conve
     results /= avg
     results = np.round(results, 4)
     # results = np.array(results)
-    print(results)
-    r_coef = np.round(np.corrcoef(vary_x, results)[1][0], 3)
-    poly_fit = np.polyfit(vary_x, results, 2)
-    plt.title(f"Varying {attr_name} (avg of {avg} runs)")
-    plt.xlabel(f"Value of {attr_name} (n={num})")
-    plt.ylabel(f"Convergence time (epochs)")
-    plt.scatter(vary_x, results)
-    plt.plot(vary_x, np.poly1d(poly_fit)(vary_x), color='red')
-    plt.savefig(os.path.join(SAVE_DIR, f"{attr_name}.png"))
-    plt.show()
-    plt.close()
+    meta_data = (num, avg, converge_epoch)
+    plot_data[attr_name] = (meta_data, vary_x, results)
+
+
+def plot_results():
+    print(plot_data)
+    for name, data in plot_data.items():
+        meta_data, x, y = data
+        num, avg, converge_epoch = meta_data
+        r_coef = np.round(np.corrcoef(x, y)[1][0], 3)
+        poly_fit = np.polyfit(x, y, 2)
+        plt.title(f"Varying {name} (avg of {avg} runs)")
+        plt.xlabel(f"Value of {name} (n={num})")
+        plt.ylabel(f"Convergence time (C={converge_epoch})")
+        plt.scatter(x, y)
+        plt.plot(x, np.poly1d(poly_fit)(x), color='red')
+        plt.savefig(os.path.join(SAVE_DIR, f"{name}.png"))
+        plt.show()
+        plt.close()
 
 
 if __name__ == "__main__":
@@ -85,5 +94,6 @@ if __name__ == "__main__":
         processes.append(p)
     for p in processes:
         p.join()
+    plot_results()
     stop = time.time()
     print(f"Time taken: {round(stop - start, 4)}")
