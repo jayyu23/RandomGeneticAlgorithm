@@ -34,6 +34,18 @@ class Arrangement:
         return len(self.array)
 
 
+class Colony:
+    def __init__(self, genomes):
+        self.genomes = genomes
+        self.epoch = 0
+
+    def get_best_time(self):
+        return self.genomes[0].time
+
+    def __getitem__(self, item):
+        return self.genomes[item]
+
+
 class GeneticProcessAllocator:
 
     def __init__(self, path=None, n_processes=100):
@@ -98,9 +110,9 @@ class GeneticProcessAllocator:
         self.colony = self.create_colony()
         repeated = 0
         for gen in range(self.epochs):
-            last_best = self.colony[0].time
-            self.colony = self.evolve(self.colony)
-            now_best = self.colony[0].time
+            last_best = self.colony.get_best_time()
+            self.colony = self.evolve()
+            now_best = self.colony.get_best_time()
             if last_best == now_best:
                 repeated += 1
                 if break_threshold and repeated == break_threshold:
@@ -111,9 +123,9 @@ class GeneticProcessAllocator:
                 print("="*30)
                 print(f"Epoch {gen + 1}\n")
                 for i in range(3):
-                    print(i + 1, self.colony[i].time)
+                    print(i + 1, self.colony.genomes[i].time)
             if graph:
-                graph_results.append(deepcopy(self.colony[0].time))
+                graph_results.append(deepcopy(self.colony.get_best_time()))
         if graph:
             plt.title("Results over epochs")
             plt.plot(list(range(len(graph_results))), graph_results)
@@ -125,7 +137,7 @@ class GeneticProcessAllocator:
     def create_colony(self, size=None):
         size = size if size else self.colony_size
         self.colony = [Arrangement(np.random.randint(0, self.kernel_num, size=self.processes)) for x in range(size)]
-        return self.colony
+        return Colony(self.colony)
 
     """
     Evaluates the 'fitness' for a single Arrangement. Is the max-time for any kernel.
@@ -149,8 +161,8 @@ class GeneticProcessAllocator:
     Evolve 'colony' to the next stage, through using (1) elitism, (2) mutation, (3) reproduction
     By default will evolve self.colony
     """
-    def evolve(self, colony=None):
-        colony = colony if colony else self.colony
+    def evolve(self):
+        colony = self.colony.genomes
         # First, get fitness function
         ranking = sorted([self.kernel_fitness_function(arr) for arr in colony], key=lambda x: x.time)
         # determine how many elitism, how many mutation, how many reproduced
@@ -169,8 +181,10 @@ class GeneticProcessAllocator:
             split = random.randint(0, len(parent1))
             child_arr = np.concatenate((parent1.array[:split], parent2.array[split:]))
             new_colony.append(Arrangement(child_arr))
-        
-        return sorted([self.kernel_fitness_function(arr) for arr in new_colony], key=lambda x: x.time)
+
+        self.colony.genomes = sorted([self.kernel_fitness_function(arr) for arr in new_colony], key=lambda x: x.time)
+        self.colony.epoch += 1
+        return self.colony
 
     def mutate(self, arr):
         data = arr.array

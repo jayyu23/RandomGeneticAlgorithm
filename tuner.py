@@ -22,7 +22,7 @@ def vary_attribute(attr_name, low_bound=0, upper_bound=1, num=30, avg=1, remove_
         results += np.array(curr)
     results /= avg
     results = np.round(results, 4)
-    # Remove anom
+    # Remove anomalies
     for n in range(remove_anom):
         m = np.max(results)
         index = np.where(results == m)[0][0]
@@ -39,6 +39,14 @@ def vary_attribute(attr_name, low_bound=0, upper_bound=1, num=30, avg=1, remove_
     plt.savefig(os.path.join(SAVE_DIR, f"{attr_name}.png"))
     plt.show()
     plt.close()
+
+
+def vary_time(attr_name, low_bound=0, upper_bound=1, num=30, converge_epoch=30):
+    vary_x = np.round(np.linspace(low_bound, upper_bound, num), 3)
+    results = np.zeros(num)
+    for x in vary_x:
+        setattr(gpa, attr_name, x)
+        curr.append(gpa.run(print_every=None, graph=True, break_threshold=converge_epoch)[0].time)
 
 
 if __name__ == "__main__":
