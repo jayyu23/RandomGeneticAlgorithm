@@ -189,8 +189,10 @@ class GeneticProcessAllocator:
     def mutate(self, arr):
         data = arr.array
         mut_p = int(self.mut_gene_prop * len(data))
+        index_choices = list(range(len(data)))
         for i in range(mut_p):
-            choice = random.randint(0, len(data) - 1)
+            choice = random.choice(index_choices)
+            index_choices.remove(choice)
             data[choice] = (data[choice] + random.randint(1, self.kernel_num - 1)) % self.kernel_num
         return arr
 
