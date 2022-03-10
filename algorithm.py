@@ -12,15 +12,15 @@ class Process:
     def __init__(self, name, time):
         self.name = name
         self.time = time
-        self.kernel = -1 # Either 0 or 1. -1 means uninitialized.
+        self.kernel = -1  # Either 0 or 1. -1 means uninitialized.
 
 
 """
-An arrangement is one order of how different items should be put.
+A genome is a schematic encoding of how different items should be put.
 Is a simple 1-d array. Index corresponds to the index item in GeneticProcessAllocator.p_array.
 Value corresponds to which kernel each process is supposed to be placed in
 """
-class Arrangement:
+class Genome:
     def __init__(self, array):
         self.array = array
         self.time = None
@@ -29,7 +29,7 @@ class Arrangement:
     def __repr__(self) -> str:
         string = "".join(self.array.astype(str))
         return f"<Arrangement {string}, time: {self.time}>"
-    
+
     def __len__(self):
         return len(self.array)
 
@@ -72,6 +72,7 @@ class GeneticProcessAllocator:
     """
     Get process data from an existing CSV
     """
+
     def init_from_csv(self, path):
         # read_csv
         with open(path) as file:
@@ -84,6 +85,7 @@ class GeneticProcessAllocator:
     """
     Create a new set of process data using a generating distribution
     """
+
     def init_from_generator(self, n_processes, linear=True):
         # Gen according to n_processes
         # create process data
@@ -92,7 +94,7 @@ class GeneticProcessAllocator:
         else:
             randoms = (np.random.rand(n_processes)) * 10
             processes = np.round(np.power(2, randoms), 3)
-        
+
         # write to .csv + Process Array
         with open("process_data.csv", 'w') as file:
             # write header
@@ -105,6 +107,7 @@ class GeneticProcessAllocator:
     """
     Run self.epochs epochs of genetic evolution and prints results onto terminal
     """
+
     def run(self, print_every=10, graph=False, break_threshold=None):
         graph_results = []
         self.colony = self.create_colony()
@@ -120,7 +123,7 @@ class GeneticProcessAllocator:
             else:
                 repeated = 0
             if print_every and (gen % print_every == 0):
-                print("="*30)
+                print("=" * 30)
                 print(f"Epoch {gen + 1}\n")
                 for i in range(3):
                     print(i + 1, self.colony.genomes[i].time)
@@ -136,14 +139,15 @@ class GeneticProcessAllocator:
 
     def create_colony(self, size=None):
         size = size if size else self.colony_size
-        self.colony = [Arrangement(np.random.randint(0, self.kernel_num, size=self.processes)) for x in range(size)]
+        self.colony = [Genome(np.random.randint(0, self.kernel_num, size=self.processes)) for x in range(size)]
         return Colony(self.colony)
 
     """
     Evaluates the 'fitness' for a single Arrangement. Is the max-time for any kernel.
     Modifies Arrangement.time and returns original Arrangement
     """
-    def kernel_fitness_function(self, arrangement: Arrangement):
+
+    def kernel_fitness_function(self, arrangement: Genome):
         kernels = dict()
         for index, p in enumerate(self.p_array):
             k_num = arrangement.array[index]
@@ -161,6 +165,7 @@ class GeneticProcessAllocator:
     Evolve 'colony' to the next stage, through using (1) elitism, (2) mutation, (3) reproduction
     By default will evolve self.colony
     """
+
     def evolve(self):
         colony = self.colony.genomes
         # First, get fitness function
@@ -172,15 +177,15 @@ class GeneticProcessAllocator:
         # elitism
         new_colony = ranking[:elitism_n]
         # mutation_n
-        new_colony += [self.mutate(deepcopy(random.choice(ranking[:int(self.mutation_ratio * len(colony))]))) 
-                        for x in range(mutation_n)]
+        new_colony += [self.mutate(deepcopy(random.choice(ranking[:int(self.mutation_ratio * len(colony))])))
+                       for x in range(mutation_n)]
         # reproduce
         for n in range(reproduce_n):
-            parent1 = random.choice(ranking[:int(self.reproduce_ratio * len(colony))])
-            parent2 = random.choice(ranking[:int(self.reproduce_ratio * len(colony))])
+            parent1 = random.choice(ranking[:int(self.reproduce_ratio * len(colony)) + 1])
+            parent2 = random.choice(ranking[:int(self.reproduce_ratio * len(colony)) + 1])
             split = random.randint(0, len(parent1))
             child_arr = np.concatenate((parent1.array[:split], parent2.array[split:]))
-            new_colony.append(Arrangement(child_arr))
+            new_colony.append(Genome(child_arr))
 
         self.colony.genomes = sorted([self.kernel_fitness_function(arr) for arr in new_colony], key=lambda x: x.time)
         self.colony.epoch += 1

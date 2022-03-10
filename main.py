@@ -10,6 +10,7 @@ gpa.epochs = 200
 gpa.colony_size = 50
 SAVE_DIR = str()
 
+
 def vary_attribute(attr_name, plot_data, low_bound=0, upper_bound=1, num=20, avg=1, remove_anom=0):
     vary_x = np.round(np.linspace(low_bound, upper_bound, num), 3)
     results = np.zeros(num)
@@ -35,7 +36,7 @@ def vary_attribute(attr_name, plot_data, low_bound=0, upper_bound=1, num=20, avg
     plot_data[attr_name] = (meta_data, vary_x, results)
 
 
-def vary_time(attr_name, plot_data, low_bound=0.05, upper_bound=0.95, num=10, avg=1, converge_epoch=30):
+def vary_time(attr_name, plot_data, low_bound=0.05, upper_bound=0.95, num=100, avg=20, converge_epoch=30):
     vary_x = np.round(np.linspace(low_bound, upper_bound, num), 3)
     results = np.zeros(num)
     for times in range(avg):
@@ -76,6 +77,7 @@ def plot_results(plot_data, time=True):
 
 
 if __name__ == "__main__":
+    # Note that there is multiprocessing going on (in order to speed up execution time)
     start = time.time()
     SAVE_DIR = os.path.join("runs", str(time.time_ns()))
     os.mkdir(SAVE_DIR)
@@ -86,7 +88,7 @@ if __name__ == "__main__":
     p_data = manager.dict()  # name -> (metadata, x, y)
 
     for v in attrs:
-        p = mp.Process(target=vary_time, args=(v,p_data))
+        p = mp.Process(target=vary_attribute, args=(v, p_data))
         p.start()
         processes.append(p)
     for p in processes:
